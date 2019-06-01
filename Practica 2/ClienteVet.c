@@ -29,7 +29,7 @@ const int SIZE_DATA_DOG = sizeof(struct dogType);
 struct dogType *dog;    //Aca se almacena una estructura tipo dogType
 char genero[] = {'h', 'm', 'H', 'M'};
 char opcion;
-int i = 0, j = 0,r,fd;  //r y fd para manejo de la conexion
+int i = 0, j = 0,r,socket_cliente;  //r y socket_cliente para manejo de la conexion
 //Var registros
 long positionReg = 0;   //Numero de registro
 long nregisters  = 0;   //Cuantos registros hay
@@ -43,30 +43,48 @@ void salir();
 void regresar(void (*src)(void), void (*dst)(void), char * message);
 void continuar(void (*dst)(void));
 void menu(void);
+// Hilos y Socket
+void enviar(void *pointer, size_t size){
+        int ok = send(socket_cliente, pointer, size, 0);
+        if(ok < 1) {
+                perror("send error");
+                exit(-1);
+        }}
+void recibir(void *pointer, size_t size){
+        int ok = recv(socket_cliente, pointer, size, 0);
+        if(ok < 1) {
+                perror("recv error, conexión perdida");
+                exit(-1);
+        }}
+void crear_socket(char *addr){
+
+        socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
+        struct sockaddr_in client;
+
+        if(socket_cliente == -1) {
+                perror("socket creation failed");
+                exit(-1);
+        }
+
+        bzero(client.sin_zero, 8);
+
+        client.sin_family = AF_INET;
+        client.sin_port = htons(PORT);
+        client.sin_addr.s_addr = inet_addr(addr);
+
+        printf("Intentando conectar con %s en el puerto %i \n", addr, PORT);
+
+        int ok = connect(socket_cliente, (struct sockaddr*)&client, sizeof(struct sockaddr_in));
+
+        if(ok == -1) {
+                perror("Conexion Rechazada\n");
+                exit(-1);
+        }else printf("Conexion Exitosa\n");}
 //Main
 int main(int argc, char const *argv[]) {
     system("clear");
-    dog = malloc(SIZE_DATA_DOG);//Abre espacio para dogType
-    //Conexion y verificacion de esta
-    fd = socket(AF_INET,SOCK_STREAM,0);
-    //Validar
-    if (fd < 0){
-        perror("Error socket");
-        exit(EXIT_FAILURE); 
-    }
-    server.sin_family=AF_INET;
-    server.sin_port = htons(PORT);
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");                              //Con la IP publica del servidor
-    bzero(server.sin_zero,8);
-    tama1 = sizeof(struct sockaddr_in);                                            
-    r = connect(fd,(struct sockaddr*)&server,tama1);
-        //Validar
-    if (r < 0){
-        perror("Error connect");
-        exit(EXIT_FAILURE);
-    }
+    crear_socket((char*)argv[1]);
     menu();
-    close(fd);
     return 0;}
 //Control ingreso de datos
 int getch(void){
@@ -281,13 +299,13 @@ void ingresar(void){
     printf("\n\tPeso [Kg]:\t\t");	    scandecimal (6, &dog->peso);
     printf("\n\tGénero [H/M]:\t\t");    scanchar    (1, &dog->genero, "HMhm");
     //Envio de dogType
-    r = send(fd, dog, SIZE_DATA_DOG, 0);
+    r = send(socket_cliente, dog, SIZE_DATA_DOG, 0);
     if(r == -1){
         perror("\n\t Error al enviar la estructura...");
         exit(EXIT_FAILURE);
     }
     //rec # actual de registro
-    r = recv(fd, &positionReg, sizeof(positionReg),0);
+    r = recv(socket_cliente, &positionReg, sizeof(positionReg),0);
     if(r == -1)
     {
         perror("\n\t Error al recibir #  de registro del perro...");
@@ -411,23 +429,23 @@ void menu(){
         switch(opcion){
             case '1':
                 opcion = '1';
-                r = send(fd, &opcion,sizeof(opcion),0);        
+                r = send(socket_cliente, &opcion,sizeof(opcion),0);        
                 ingresar();
                 break;
 
             case '2': 
                 opcion = '1';
-                r = send(fd,&opcion,sizeof(opcion),0); 
+                r = send(socket_cliente,&opcion,sizeof(opcion),0); 
                 ver(0);
                 break;
             case '3':
                 opcion = '1';
-                r = send(fd,&opcion,sizeof(opcion),0);
+                r = send(socket_cliente,&opcion,sizeof(opcion),0);
                 borrar();
                 break;
             case '4':        
                 opcion = '1';
-                r = send(fd,&opcion,sizeof(opcion),0); 
+                r = send(socket_cliente,&opcion,sizeof(opcion),0); 
                 buscar();
                 break;
 
@@ -452,5 +470,6 @@ void regresar(void (*src)(void), void (*dst)(void), char * message){
     }
 void salir(){
     free(dog);
+    close(socket_cliente);
     exit(0);
     }

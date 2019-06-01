@@ -20,7 +20,7 @@ char buffer[50];
 char * nombre;
 size_t tama1;
 size_t tamaClient;
-int r, fd, fd1, opt = 1;                                                                          //Evitar errores
+int r, socket_servidor, socket_cliente, opt = 1;                                                                          //Evitar errores
 struct sockaddr_in server;
 struct sockaddr_in client;
 time_t t;
@@ -29,7 +29,7 @@ socklen_t sin_size;
 #define SIZE_HASH 2000
 #define NAME_FILE "dataDogs.dat"
 #define PORT 3535                                                              
-#define BACKLOG 2 
+#define BACKLOG 4 
 //Estructuras y variables
 struct dogType{
     char nombre[32];
@@ -399,7 +399,7 @@ int numreg(){
 
 //Funciones de menu
 void ingresar(void){
-    r = recv(fd1, dog, SIZE_DATA_DOG, 0);
+    r = recv(socket_cliente, dog, SIZE_DATA_DOG, 0);
     printf("\n%s",dog -> nombre);
     if(r == -1)
     {
@@ -410,7 +410,7 @@ void ingresar(void){
 
     int actualreg = ((positionReg - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
     
-    r = send(fd1, &actualreg, sizeof(actualreg), 0);
+    r = send(socket_cliente, &actualreg, sizeof(actualreg), 0);
     if(r == -1)
     {
         perror("\n\t Error al enviar la  numero actual de registro...");
@@ -485,9 +485,51 @@ void buscar(void){
 
     free(dogName);
     }
+//Hilos y Socket
+void enviar(int socket_cliente, void *pointer, size_t size){
+        int ok = send(socket_cliente, pointer, size, 0);
+        if(ok < 1) {
+                perror("send error");
+                exit(-1);
+        }}
+void recibir(int socket_cliente, void *pointer, size_t size){
+        int ok = recv(socket_cliente, pointer, size, 0);
+        if(ok < 1) {
+                perror("recv error");
+                exit(-1);
+        }}
+void crear_socket(){
+        struct sockaddr_in server;
+        socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
 
+        if(socket_servidor == -1) {
+                perror("\n\t Error en la creación del socket...");
+                exit(-1);
+        }
+        
+        if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
+        perror("setsockopt"); 
+        exit(EXIT_FAILURE); 
+        } 
+        bzero(server.sin_zero, 8);
+
+        server.sin_family = AF_INET;
+        server.sin_port = htons(PORT);
+        server.sin_addr.s_addr = INADDR_ANY;
+
+        int ok = bind(socket_servidor, (struct sockaddr*) &server, sizeof(struct sockaddr_in));
+        if(ok == -1) {
+                perror("Error al iniciar el servidor\n");
+                exit(-1);
+        }
+
+        ok = listen(socket_servidor, BACKLOG);
+        if(ok == -1) {
+                perror("listen error");
+                exit(-1);
+        }}
 void menu(){
-        r = recv(fd1, &opcion, sizeof(opcion), 0);
+        r = recv(socket_cliente, &opcion, sizeof(opcion), 0);
         system("clear");
         switch(opcion){
             case '1':        ingresar();	break;
@@ -503,33 +545,7 @@ void main(void){
     nombre = malloc(32);
     dog = malloc(sizeof(struct dogType));
     //Conexion.
-    fd = socket(AF_INET, SOCK_STREAM, 0);
-        if(fd == -1){
-            perror("\n\t Error en la creación del socket...");
-            exit(EXIT_FAILURE);
-        }
-
-     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
-        perror("setsockopt"); 
-        exit(EXIT_FAILURE); 
-    } 
-
-    server.sin_family = AF_INET;
-    server.sin_port = htons(PORT);
-    server.sin_addr.s_addr = INADDR_ANY;
-    bzero(server.sin_zero, 8);
-    tama1 = sizeof(struct sockaddr_in);
-    r = bind (fd, (struct sockaddr *) &server, tama1);
-    if(r == -1){
-        perror("\n\t Error en la configuración del socket(bind)...");
-        exit(EXIT_FAILURE);
-    }
-    r = listen(fd, BACKLOG);
-    if(r == -1){
-        perror("\n\t Error en la función listen()...");
-        exit(EXIT_FAILURE);
-    }
-
+    crear_socket();
     //Formateo y configuracion de informacion
     if(fp == NULL){																										
         fp = fopen(NAME_FILE, "w");									
@@ -563,13 +579,13 @@ void main(void){
     //Espera conexion 
     while(1){		
         tamaClient = 0;
-        fd1 = accept(fd, (struct sockaddr * )&client,(socklen_t *)&tamaClient);
-        if(fd1 == -1){
+        socket_cliente = accept(socket_servidor, (struct sockaddr * )&client,(socklen_t *)&tamaClient);
+        if(socket_cliente == -1){
             perror("\n\t Error en recibir la conexión(accept)...");
             exit(EXIT_FAILURE);
         }
         menu();   
     }
-    close(fd1);
-    close(fd);	
+    //close(socket_cliente);
+    //close(socket_servidor);	
 }
