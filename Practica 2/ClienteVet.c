@@ -21,7 +21,7 @@ struct dogType{
     char genero;
 };    
 
-struct sockaddr_in server;
+struct sockaddr_in client;
 char buffer[1024] = {0};
 size_t tama1;
 
@@ -45,21 +45,19 @@ void continuar(void (*dst)(void));
 void menu(void);
 // Hilos y Socket
 void enviar(void *pointer, size_t size){
-        int ok = send(socket_cliente, pointer, size, 0);
-        if(ok < 1) {
+        r = send(socket_cliente, pointer, size, 0);
+        if(r < 1) {
                 perror("send error");
                 exit(-1);
         }}
 void recibir(void *pointer, size_t size){
-        int ok = recv(socket_cliente, pointer, size, 0);
-        if(ok < 1) {
+        r = recv(socket_cliente, pointer, size, 0);
+        if(r < 1) {
                 perror("recv error, conexión perdida");
                 exit(-1);
         }}
-void crear_socket(char *addr){
-
+void crear_socket(){
         socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
-        struct sockaddr_in client;
 
         if(socket_cliente == -1) {
                 perror("socket creation failed");
@@ -70,20 +68,21 @@ void crear_socket(char *addr){
 
         client.sin_family = AF_INET;
         client.sin_port = htons(PORT);
-        client.sin_addr.s_addr = inet_addr(addr);
+        client.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-        printf("Intentando conectar con %s en el puerto %i \n", addr, PORT);
+        printf("Intentando conectar con %s en el puerto %i \n", "127.0.0.1", PORT);
 
-        int ok = connect(socket_cliente, (struct sockaddr*)&client, sizeof(struct sockaddr_in));
+        r = connect(socket_cliente, (struct sockaddr*)&client, sizeof(struct sockaddr_in));
 
-        if(ok == -1) {
+        if(r == -1) {
                 perror("Conexion Rechazada\n");
                 exit(-1);
         }else printf("Conexion Exitosa\n");}
 //Main
 int main(int argc, char const *argv[]) {
     system("clear");
-    crear_socket((char*)argv[1]);
+    dog = malloc(SIZE_DATA_DOG);  
+    crear_socket();
     menu();
     return 0;}
 //Control ingreso de datos
@@ -299,13 +298,13 @@ void ingresar(void){
     printf("\n\tPeso [Kg]:\t\t");	    scandecimal (6, &dog->peso);
     printf("\n\tGénero [H/M]:\t\t");    scanchar    (1, &dog->genero, "HMhm");
     //Envio de dogType
-    r = send(socket_cliente, dog, SIZE_DATA_DOG, 0);
+    enviar(dog, SIZE_DATA_DOG);
     if(r == -1){
         perror("\n\t Error al enviar la estructura...");
         exit(EXIT_FAILURE);
     }
     //rec # actual de registro
-    r = recv(socket_cliente, &positionReg, sizeof(positionReg),0);
+    recibir(&positionReg, sizeof(positionReg));
     if(r == -1)
     {
         perror("\n\t Error al recibir #  de registro del perro...");
@@ -319,67 +318,51 @@ void ingresar(void){
     );
     continuar(&menu);
     }
-int  numreg(int a){
-
-    //nregisters = (ftell(fp) - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8);
-    printf("\n\tRegistros: %li", nregisters);
-    if(nregisters > 0){
+int  numreg(){
+    recibir(&nregisters,sizeof(nregisters));
+    if(nregisters > 0)
+    {
         printf("\n\tIngrese número de registro:\n\t");
         scanlidigit(10, &positionReg);
-        if(positionReg < 1 || positionReg > nregisters){
+        enviar(&positionReg,sizeof(positionReg));
+
+        if(positionReg < 1 || positionReg > nregisters)
+        {
             printf("\n\n\tFuera de rango [%li max].", nregisters);
             return 0;
-        }else{
-            if(a==0){
-                return 1;
-            }else{
-                return 2;
-            }
-            
         }
-    }else{
-      printf("\n\tFallo en obtener número de registros.");
-      return 0;
+
+        else
+        { return 1; }
+    }
+
+    else
+    {
+        printf("\n\tFallo en obtener número de registros.");
+        return 0;
     }
     }
-void ver(int modo){
-  //Cod solicitar numero de registro y enviar a server
-  //El numero de registro esta almacenado en positionReg
-  if(modo==0||modo==2){//Otro
-    modo = numreg(modo);
-  }
-  if(modo == 1){//Ver registro
-    system("clear");
-    printf("\n\n\t%s \n\t%s\t\t%s \n\t%s\t\t%i \n\t%s\t\t%s \n\t%s\t%i%s \n\t%s\t\t%.2f%s \n\t%s\t\t%c \n\t%s",
-                    "------------ Mascota ------------",
-                    "Nombre:"   , dog->nombre,
-                    "Edad:"     , dog->edad,
-                    "Raza:"     , dog->raza,
-                    "Estatura:" , dog->estatura, " cm(s)",
-                    "Peso:"     , dog->peso,     " Kg(s)",
-                    "Genero:"   , dog->genero,
-                    "---------------------------------"
-    );
-    char tonano[40]="gedit ";
-    char numero[10]="";
-    sprintf(numero, "%li", positionReg);
-    strcat(tonano,numero);//Crea una linea de comando que se ejecutará por system()
-    system(tonano);
-  }else if(modo == 2){//Borrar registro
-    system("clear");
-    printf("\n\n\t%s \n\t%s\t\t%s \n\t%s\t\t%i \n\t%s\t\t%s \n\t%s\t%i%s \n\t%s\t\t%.2f%s \n\t%s\t\t%c \n\t%s",
-                    "------------ Mascota ------------",
-                    "Nombre:"   , dog->nombre,
-                    "Edad:"     , dog->edad,
-                    "Raza:"     , dog->raza,
-                    "Estatura:" , dog->estatura, " cm(s)",
-                    "Peso:"     , dog->peso,     " Kg(s)",
-                    "Genero:"   , dog->genero,
-                    "---------------------------------"
-    );
-  }
-  continuar(&menu);
+void ver(){
+  if(numreg() == 1)
+    { 
+        //if(leer(dog, SIZE_DATA_DOG) == 1)
+        //{
+            recibir(dog,SIZE_DATA_DOG);
+            printf
+            (
+                "\n\n\t%s \n\t%s\t\t%s \n\t%s\t\t%i \n\t%s\t\t%s \n\t%s\t%i%s \n\t%s\t\t%.2f%s \n\t%s\t\t%c \n\t%s",
+                "------------ Mascota ------------",
+                "Nombre:", dog->nombre,
+                "Edad:", dog->edad,
+                "Raza:", dog->raza,
+                "Estatura:", dog->estatura, " cm(s)",
+                "Peso:", dog->peso, " Kg(s)",
+                "Genero:", dog->genero,
+                "---------------------------------"
+            );    
+        //}
     }
+        continuar(&menu);}
 void buscar(void){
     system("clear");
     char * dogName;
@@ -401,7 +384,7 @@ void buscar(void){
     continuar(&menu);
     }
 void borrar(void){
-    ver(2);
+    ver();
     printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
     scanchar(1, &opcion, "SYNsyn");
     if(opcion == 'n' || opcion == 'N'){
@@ -429,23 +412,23 @@ void menu(){
         switch(opcion){
             case '1':
                 opcion = '1';
-                r = send(socket_cliente, &opcion,sizeof(opcion),0);        
+                enviar(&opcion,sizeof(opcion));        
                 ingresar();
                 break;
 
             case '2': 
-                opcion = '1';
-                r = send(socket_cliente,&opcion,sizeof(opcion),0); 
+                opcion = '2';
+                enviar(&opcion,sizeof(opcion));
                 ver(0);
                 break;
             case '3':
-                opcion = '1';
-                r = send(socket_cliente,&opcion,sizeof(opcion),0);
+                opcion = '3';
+                enviar(&opcion,sizeof(opcion));
                 borrar();
                 break;
             case '4':        
-                opcion = '1';
-                r = send(socket_cliente,&opcion,sizeof(opcion),0); 
+                opcion = '4';
+                enviar(&opcion,sizeof(opcion)); 
                 buscar();
                 break;
 

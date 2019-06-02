@@ -19,7 +19,6 @@ long positionReg = 0, block = 0, nregisters = 0;
 char buffer[50];
 char * nombre;
 size_t tama1;
-size_t tamaClient;
 int r, socket_servidor, socket_cliente, opt = 1;                                                                          //Evitar errores
 struct sockaddr_in server;
 struct sockaddr_in client;
@@ -68,6 +67,48 @@ void regresar(void (*src)(void), void (*dst)(void), char * message);
 void continuar(void (*dst)(void));
 void menu(void);
 
+//Hilos y Socket
+void enviar(int socket_cliente, void *pointer, size_t size){
+        r = send(socket_cliente, pointer, size, 0);
+        if(r < 1) {
+                perror("send error");
+                exit(-1);
+        }}
+void recibir(int socket_cliente, void *pointer, size_t size){
+        r = recv(socket_cliente, pointer, size, 0);
+        if(r < 1) {
+                perror("recv error");
+                exit(-1);
+        }}
+void crear_socket(){
+        socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+        if(socket_servidor == -1) {
+                perror("\n\t Error en la creación del socket...");
+                exit(-1);
+        }
+        
+        if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
+        perror("setsockopt"); 
+        exit(EXIT_FAILURE); 
+        } 
+        bzero(server.sin_zero, 8);
+
+        server.sin_family = AF_INET;
+        server.sin_port = htons(PORT);
+        server.sin_addr.s_addr = INADDR_ANY;
+
+        r = bind(socket_servidor, (struct sockaddr*) &server, sizeof(struct sockaddr_in));
+        if(r == -1) {
+                perror("Error al iniciar el servidor\n");
+                exit(-1);
+        }
+
+        r = listen(socket_servidor, BACKLOG);
+        if(r == -1) {
+                perror("listen error");
+                exit(-1);
+        }}
 //Funciones de inicio
 int leer(void * data, size_t size){
     if(fread(data, size, 1, fp) <= 0)
@@ -373,16 +414,18 @@ int numreg(){
     fseek(fp, 0, SEEK_END);
     nregisters = (ftell(fp) - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8);
 
-    printf("\n\tRegistros: %li", nregisters);
+    //printf("\n\tRegistros: %li", nregisters);
+    enviar(socket_cliente,&nregisters,sizeof(nregisters));
 
     if(nregisters > 0)
     {
-        printf("\n\tIngrese número de registro:\n\t");
+        //printf("\n\tIngrese número de registro:\n\t");
         //scanlidigit(10, &positionReg);
+        recibir(socket_cliente,&positionReg,sizeof(positionReg));
 
         if(positionReg < 1 || positionReg > nregisters)
         {
-            printf("\n\n\tFuera de rango [%li max].", nregisters);
+            //printf("\n\n\tFuera de rango [%li max].", nregisters);
             return 0;
         }
 
@@ -392,30 +435,18 @@ int numreg(){
 
     else
     {
-        printf("\n\tFallo en obtener número de registros.");
+        //printf("\n\tFallo en obtener número de registros.");
         return 0;
     }}
 
 
 //Funciones de menu
 void ingresar(void){
-    r = recv(socket_cliente, dog, SIZE_DATA_DOG, 0);
-    printf("\n%s",dog -> nombre);
-    if(r == -1)
-    {
-        perror("\n\t Error al recibir la estructura...");
-        exit(EXIT_FAILURE);
-    }
+    recibir(socket_cliente, dog, SIZE_DATA_DOG);
     push(dog);
-
-    int actualreg = ((positionReg - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
-    
-    r = send(socket_cliente, &actualreg, sizeof(actualreg), 0);
-    if(r == -1)
-    {
-        perror("\n\t Error al enviar la  numero actual de registro...");
-        exit(EXIT_FAILURE);
-    }}
+    positionReg = ((positionReg - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
+    enviar(socket_cliente, &positionReg, sizeof(positionReg));
+    menu();}
 void ver(int modo){
     if(numreg() == 1)
     {   
@@ -425,7 +456,8 @@ void ver(int modo){
 
         if(leer(dog, SIZE_DATA_DOG) == 1)
         {
-            printf
+            enviar(socket_cliente,dog,SIZE_DATA_DOG);
+            /*printf
             (
                 "\n\n\t%s \n\t%s\t\t%s \n\t%s\t\t%i \n\t%s\t\t%s \n\t%s\t%i%s \n\t%s\t\t%.2f%s \n\t%s\t\t%c \n\t%s",
                 "------------ Mascota ------------",
@@ -436,7 +468,7 @@ void ver(int modo){
                 "Peso:", dog->peso, " Kg(s)",
                 "Genero:", dog->genero,
                 "---------------------------------"
-            );
+            );*/
         if(modo != 1){
             //Abrir registro de Mascota
             char result[40]; 
@@ -453,9 +485,8 @@ void ver(int modo){
         }    
         }
     }
-
-    if(modo == 0)
-    {  }}
+    menu();
+}
 void borrar(void){
     ver(1);
     printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
@@ -485,51 +516,8 @@ void buscar(void){
 
     free(dogName);
     }
-//Hilos y Socket
-void enviar(int socket_cliente, void *pointer, size_t size){
-        int ok = send(socket_cliente, pointer, size, 0);
-        if(ok < 1) {
-                perror("send error");
-                exit(-1);
-        }}
-void recibir(int socket_cliente, void *pointer, size_t size){
-        int ok = recv(socket_cliente, pointer, size, 0);
-        if(ok < 1) {
-                perror("recv error");
-                exit(-1);
-        }}
-void crear_socket(){
-        struct sockaddr_in server;
-        socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-        if(socket_servidor == -1) {
-                perror("\n\t Error en la creación del socket...");
-                exit(-1);
-        }
-        
-        if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
-        perror("setsockopt"); 
-        exit(EXIT_FAILURE); 
-        } 
-        bzero(server.sin_zero, 8);
-
-        server.sin_family = AF_INET;
-        server.sin_port = htons(PORT);
-        server.sin_addr.s_addr = INADDR_ANY;
-
-        int ok = bind(socket_servidor, (struct sockaddr*) &server, sizeof(struct sockaddr_in));
-        if(ok == -1) {
-                perror("Error al iniciar el servidor\n");
-                exit(-1);
-        }
-
-        ok = listen(socket_servidor, BACKLOG);
-        if(ok == -1) {
-                perror("listen error");
-                exit(-1);
-        }}
 void menu(){
-        r = recv(socket_cliente, &opcion, sizeof(opcion), 0);
+        recibir(socket_cliente, &opcion, sizeof(opcion));
         system("clear");
         switch(opcion){
             case '1':        ingresar();	break;
@@ -541,6 +529,7 @@ void menu(){
 //Main
 void main(void){
     //Variables
+    fp = fopen(NAME_FILE, "rb+");
     char *valor_devuelto;
     nombre = malloc(32);
     dog = malloc(sizeof(struct dogType));
@@ -577,15 +566,14 @@ void main(void){
     fclose(petNames);
     }
     //Espera conexion 
-    while(1){		
-        tamaClient = 0;
-        socket_cliente = accept(socket_servidor, (struct sockaddr * )&client,(socklen_t *)&tamaClient);
+    //while(1){		
+        socket_cliente = accept(socket_servidor, (struct sockaddr * )&client,&sin_size);
         if(socket_cliente == -1){
             perror("\n\t Error en recibir la conexión(accept)...");
             exit(EXIT_FAILURE);
         }
         menu();   
-    }
-    //close(socket_cliente);
-    //close(socket_servidor);	
+    //}
+    close(socket_cliente);
+    close(socket_servidor);	
 }
