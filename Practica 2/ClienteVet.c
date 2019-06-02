@@ -320,6 +320,7 @@ void ingresar(void){
     }
 int  numreg(){
     recibir(&nregisters,sizeof(nregisters));
+    printf("\n\tRegistros: %li", nregisters);
     if(nregisters > 0)
     {
         printf("\n\tIngrese número de registro:\n\t");
@@ -342,7 +343,7 @@ int  numreg(){
         return 0;
     }
     }
-void ver(){
+void ver(int modo){
   if(numreg() == 1)
     { 
         //if(leer(dog, SIZE_DATA_DOG) == 1)
@@ -362,7 +363,10 @@ void ver(){
             );    
         //}
     }
-        continuar(&menu);}
+    if (modo == 0)
+    {
+        continuar(&menu);
+    }}
 void buscar(void){
     system("clear");
     char * dogName;
@@ -384,13 +388,20 @@ void buscar(void){
     continuar(&menu);
     }
 void borrar(void){
-    ver();
+    ver(1);
+    recibir(&positionReg,sizeof(positionReg));
     printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
     scanchar(1, &opcion, "SYNsyn");
+    enviar(&opcion,sizeof(opcion));
     if(opcion == 'n' || opcion == 'N'){
       continuar(&menu);
     }else{
       //Cod, pedir server borrado
+      recibir(&r,sizeof(r));
+      if (r == 0)
+      {
+          printf("\n\n\t(NI) - Error en busqueda de registro No. %li", positionReg);
+      }
       printf("\n\tRegistro borrado satisfactoriamente");
       continuar(&menu);
     }

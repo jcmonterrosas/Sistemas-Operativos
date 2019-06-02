@@ -268,7 +268,7 @@ int pop(char * parameter){
         return 1;
     }}
 
-void truncar(long n){
+int truncar(long n){
     void * buffer;
     char * dogName;
     long * posnext;
@@ -332,8 +332,9 @@ void truncar(long n){
             long posback = seekreg(n, hashnumber);
 
             if(posback == -1)
-            {
-                printf("\n\n\t(NU) - Error en busqueda de registro No. %li", n);
+            {   
+                return 0;
+                //printf("\n\n\t(NU) - Error en busqueda de registro No. %li", n);
             }
 
             else
@@ -366,7 +367,8 @@ void truncar(long n){
 
             if(posback == -1)
             {
-                printf("\n\n\t(NI) - Error en busqueda de registro No. %li", n);
+                return 0;
+                //printf("\n\n\t(NI) - Error en busqueda de registro No. %li", n);
             }
 
             else
@@ -408,7 +410,8 @@ void truncar(long n){
         }
     }
 
-    free(posnext);}
+    free(posnext);
+    return 1;}
 
 int numreg(){
     fseek(fp, 0, SEEK_END);
@@ -485,20 +488,24 @@ void ver(int modo){
         }    
         }
     }
-    menu();
-}
+    if (modo == 0)
+    {
+        menu();
+    }}
 void borrar(void){
     ver(1);
-    printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
+    enviar(socket_cliente,&positionReg,sizeof(positionReg));
+    //printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
     //scanchar(1, &opcion, "SYNsyn");
-
+    recibir(socket_cliente,&opcion,sizeof(opcion));
     if(opcion == 'n' || opcion == 'N')
-    { }
-
+    { menu();}
     else
     {
-        truncar(positionReg);
-        printf("\n\tRegistro borrado satisfactoriamente");
+        r = truncar(positionReg);
+        enviar(socket_cliente,&r,sizeof(r));
+        //printf("\n\tRegistro borrado satisfactoriamente");
+        menu();
     }}
 void buscar(void){
     system("clear");
