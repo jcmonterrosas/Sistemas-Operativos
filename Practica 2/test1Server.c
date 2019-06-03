@@ -13,6 +13,7 @@
 FILE *fp;
 FILE *dogNames;
 FILE *registro;
+
 char opcion;
 int i = 0, j = 0;
 long positionReg = 0, block = 0, nregisters = 0;
