@@ -12,7 +12,7 @@
                                                           
 FILE *fp;
 FILE *dogNames;
-FILE *log;
+FILE *registro;
 char opcion;
 int i = 0, j = 0;
 long positionReg = 0, block = 0, nregisters = 0;
@@ -37,7 +37,7 @@ struct dogType{
     int estatura;
     float peso;
     char genero;
-};
+    };
 char razas[][32] = {
 
     "Boxer", "Labrador", "Huskee", "Poodle", "Beagle",
@@ -49,7 +49,7 @@ char razas[][32] = {
     "Sabueso", "Samoyedo", "San bernardo", "Schnauzer", "Shar pei",
     "Shiba", "ShihTzu", "Spaniel", "Teckel", "Terranova",
     "Terrier", "Yorshire Terrier", "Pastor Ovejero", "Springer", "Spitz"
-};
+    };
 char genero[] = {'h', 'm', 'H', 'M'};
 struct dogType *dog;												//*dog indica una pocicion de memoria, del tipo dogType
 const int SIZE_DATA_DOG = sizeof(struct dogType);
@@ -489,16 +489,10 @@ void buscar(void){
     char * dogName;
     dogName = malloc(32);
     dogName[32] = '\0';
-
     recibir(socket_cliente, dogName,sizeof(dogName));
     pop(dogName);
     int busq = -1;
     enviar(socket_cliente,&busq,sizeof(busq));
-    
-    if(j < 1){
-        printf("\n\t%s%s%s\n", "No existe registro de la mascota \"", dogName, "\"...");
-    }
-
     free(dogName);
     menu();
     }
@@ -516,7 +510,6 @@ void menu(){
 void main(void){
     
     fp = fopen(NAME_FILE, "rb+");
-    2
     //Variables
     char *valor_devuelto;
     nombre = malloc(32);
@@ -554,7 +547,7 @@ void main(void){
         fclose(petNames);
     }
     //Verificacion de log
-    uf
+
     //Espera conexion 
     //while(1){		
         socket_cliente = accept(socket_servidor, (struct sockaddr * )&client,&sin_size);
