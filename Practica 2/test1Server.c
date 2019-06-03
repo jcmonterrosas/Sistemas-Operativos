@@ -10,7 +10,7 @@
 #include <netinet/in.h> 
 #include <arpa/inet.h>
 
-//Comentario de test                                                            
+//Comentario de test  ya no es                                                          
 FILE *fp;
 FILE *dogNames; 
 char opcion;
