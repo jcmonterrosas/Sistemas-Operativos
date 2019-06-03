@@ -9,10 +9,10 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <arpa/inet.h>
-
-//Comentario de test  ya no es                                                          
+                                                          
 FILE *fp;
-FILE *dogNames; 
+FILE *dogNames;
+FILE *log;
 char opcion;
 int i = 0, j = 0;
 long positionReg = 0, block = 0, nregisters = 0;
@@ -136,7 +136,7 @@ void formatear(){
     {
         fwrite(&block, 8, 1, fp);
     }
-}
+    }
 //Funciones de control de info
 long hash(const char *str){
     long hashnumber;
@@ -223,48 +223,25 @@ void push(struct dogType *dog){
 int pop(char * parameter){
     j = 0;
     long hashnumber = hash(parameter);
-    //fseek(fp, 8 * (hashnumber), SEEK_SET);
     block = 0;
+    int busq = 0;
     fseek(fp, 8 * (hashnumber + SIZE_HASH), SEEK_SET);
     fread(&block, 8, 1, fp);
-
-    if(block == 0)
-    {
+    if(block == 0){
         return 0;
-    }
-    else
-    {
-        do
-        {
+    }else{
+        do{
             fseek(fp, block, SEEK_SET);
             leer(dog, SIZE_DATA_DOG);
-
-            if(strcmp(parameter, dog->nombre) == 0)
-            {
-                if(j == 0)
-                {
-                    printf
-                    (
-                        "\n\n\t%s\t%s",
-                        "No. registro",
-                        "Mascota"
-                    );
-                }
-
-                printf
-                (
-                    "\n\t%li\t\t%s",
-                    ((block - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1,
-                    dog->nombre
-                );
-
+            if(strcmp(parameter, dog->nombre) == 0){
+                busq = 0;
+                enviar(socket_cliente,&busq,sizeof(busq));
+                long int id = ((block - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
+                enviar(socket_cliente, &id,sizeof(id));
                 j++;
             }
-
             fread(&block, 8, 1, fp);
-        }
-        while(block != 0);
-
+        }while(block != 0);
         return 1;
     }}
 
@@ -513,15 +490,17 @@ void buscar(void){
     dogName = malloc(32);
     dogName[32] = '\0';
 
-    printf("\n\t--- Búsqueda ---");
-    printf("\n\tNombre de la mascota: ");
-    //scanletter(32, dogName);
+    recibir(socket_cliente, dogName,sizeof(dogName));
     pop(dogName);
+    int busq = -1;
+    enviar(socket_cliente,&busq,sizeof(busq));
+    
     if(j < 1){
         printf("\n\t%s%s%s\n", "No existe registro de la mascota \"", dogName, "\"...");
     }
 
     free(dogName);
+    menu();
     }
 void menu(){
         recibir(socket_cliente, &opcion, sizeof(opcion));
@@ -535,8 +514,10 @@ void menu(){
 
 //Main
 void main(void){
-    //Variables
+    
     fp = fopen(NAME_FILE, "rb+");
+    2
+    //Variables
     char *valor_devuelto;
     nombre = malloc(32);
     dog = malloc(sizeof(struct dogType));
@@ -570,8 +551,10 @@ void main(void){
             }
             free(dogName);
         }
-    fclose(petNames);
+        fclose(petNames);
     }
+    //Verificacion de log
+    uf
     //Espera conexion 
     //while(1){		
         socket_cliente = accept(socket_servidor, (struct sockaddr * )&client,&sin_size);

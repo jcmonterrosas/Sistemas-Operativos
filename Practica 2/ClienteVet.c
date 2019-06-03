@@ -19,8 +19,7 @@ struct dogType{
     int estatura;
     float peso;
     char genero;
-};    
-
+    };    
 struct sockaddr_in client;
 char buffer[1024] = {0};
 size_t tama1;
@@ -97,7 +96,7 @@ int getch(void){
     tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
     return ch;
     }
-// ESTE ES PARA INT!!!
+
 void scandigit  (int length, int  * number){
     struct termios oldattr, newattr;
     int ch, counter = 0;
@@ -131,9 +130,8 @@ void scandigit  (int length, int  * number){
     free(array);
     tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
     }
-// ESTE ES PARA LONG!!!
-void scanlidigit(int length, long * number)
-{
+
+void scanlidigit(int length, long * number){
     struct termios oldattr, newattr;
     int ch, counter = 0;
     char * array;
@@ -250,8 +248,7 @@ void scandecimal(int length, float * decimal){
 void scanchar   (int length, char * character, char * dictionary){
     struct termios oldattr, newattr;
     int ch, counter = 0;
-
-    tcgetattr(STDIN_FILENO, &oldattr);
+    tcgetattr(STDIN_FILENO , &oldattr);
     newattr = oldattr;
     newattr.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newattr);
@@ -344,46 +341,55 @@ int  numreg(){
     }
     }
 void ver(int modo){
-  if(numreg() == 1)
-    { 
-        //if(leer(dog, SIZE_DATA_DOG) == 1)
-        //{
-            recibir(dog,SIZE_DATA_DOG);
-            printf
-            (
-                "\n\n\t%s \n\t%s\t\t%s \n\t%s\t\t%i \n\t%s\t\t%s \n\t%s\t%i%s \n\t%s\t\t%.2f%s \n\t%s\t\t%c \n\t%s",
-                "------------ Mascota ------------",
-                "Nombre:", dog->nombre,
-                "Edad:", dog->edad,
-                "Raza:", dog->raza,
-                "Estatura:", dog->estatura, " cm(s)",
-                "Peso:", dog->peso, " Kg(s)",
-                "Genero:", dog->genero,
-                "---------------------------------"
-            );    
-        //}
+    if(numreg() == 1){
+        recibir(dog,SIZE_DATA_DOG);
+        printf(
+            "\n\n\t%s \n\t%s\t\t%s \n\t%s\t\t%i \n\t%s\t\t%s \n\t%s\t%i%s \n\t%s\t\t%.2f%s \n\t%s\t\t%c \n\t%s",
+            "------------ Mascota ------------",
+            "Nombre:", dog->nombre,
+            "Edad:", dog->edad,
+            "Raza:", dog->raza,
+            "Estatura:", dog->estatura, " cm(s)",
+            "Peso:", dog->peso, " Kg(s)",
+            "Genero:", dog->genero,
+            "---------------------------------"
+        );
     }
-    if (modo == 0)
-    {
+    if (modo == 0){
         continuar(&menu);
-    }}
+    }
+    }
 void buscar(void){
     system("clear");
     char * dogName;
     dogName = malloc(32);
     dogName[32] = '\0';
+    int busq;
+    int resultados=0;
 
     printf("\n\t--- Búsqueda ---");
     printf("\n\tNombre de la mascota: ");
     scanletter(32, dogName);
+    //Envia nombre de la mascota
+    enviar(dogName, sizeof(dogName));
 
-    if(j < 1){
-        printf("\n\t%s%s%s\n", "No existe registro de la mascota \"", dogName, "\"...");
-    }else{
-        printf("%s\n",dogName);
-        //Muetra todas las mascotas del mismo nombre
+    while(1){
+        recibir(&busq,sizeof(busq));
+        if(busq == -1){
+            break;
+        }
+        long int petid;
+        recibir(&petid, sizeof(petid));
+        resultados = resultados +1;
+        printf("\n %s%li\t%s","Numero de mascota: ",petid,dogName);
     }
 
+    if(resultados == 0){
+        printf("\n\t%s%s%s\n", "No existe registro de la mascota \"", dogName, "\"...");
+    }else{
+        printf("\n Numero de resultados: %i",resultados);
+        //Muetra todas las mascotas del mismo nombre
+    }
     free(dogName);
     continuar(&menu);
     }
