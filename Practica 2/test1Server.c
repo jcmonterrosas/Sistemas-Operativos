@@ -112,8 +112,7 @@ void crear_socket(){
         }}
 //Funciones de inicio
 int leer(void * data, size_t size){
-    if(fread(data, size, 1, fp) <= 0)
-    {
+    if(fread(data, size, 1, fp) <= 0){
         printf("\n\tError de lectura...");
         return 0;
     }
@@ -139,6 +138,23 @@ void formatear(){
     }
     }
 //Funciones de control de info
+void logreg(char * operacion,char * ip, char * complemento){
+    //Estructura de fecha
+    time_t t;
+    struct tm *tm;
+    char fechayhora[100];
+    t=time(NULL);
+    tm=localtime(&t);
+    //Formato fecha y hora
+    strftime(fechayhora, 100, "%Y %m %d %T", tm);
+    printf ("Hoy es: %s", fechayhora);
+
+    fputs(fechayhora,registro);
+    fputs(ip,registro);
+    fputs(operacion,registro);
+    fputs(complemento,registro);
+    fputs("\n",registro);
+    }
 long hash(const char *str){
     long hashnumber;
     const char *ustr;
@@ -509,7 +525,7 @@ void menu(){
 
 //Main
 void main(void){
-    
+    registro = fopen("serverDogs.log", "rb+");
     fp = fopen(NAME_FILE, "rb+");
     //Variables
     char *valor_devuelto;
