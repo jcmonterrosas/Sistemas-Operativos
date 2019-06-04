@@ -422,10 +422,10 @@ void menu(){
         "5. Salir"
     );
     scanchar(1, &opcion, "12345");
+    enviar(&opcion,sizeof(opcion));
     if(opcion == '5'){
         regresar(&menu, &salir, "¿Desea salir del programa? [S/N]:");
     }else{
-        enviar(&opcion,sizeof(opcion));
         system("clear");
         switch(opcion){
             case '1':
