@@ -9,6 +9,7 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <arpa/inet.h>
+#include <pthread.h>
                                                           
 FILE *fp;
 FILE *dogNames;
@@ -20,16 +21,18 @@ long positionReg = 0, block = 0, nregisters = 0;
 char buffer[50];
 char * nombre;
 size_t tama1;
-int r, socket_servidor, socket_cliente, opt = 1;                                                                          //Evitar errores
-struct sockaddr_in server;
-struct sockaddr_in client;
+int r, socket_servidor, /*socket_cliente,*/ opt = 1;                                                                          //Evitar errores
+//struct sockaddr_in server;
+//struct sockaddr_in client;
 time_t t;
 socklen_t sin_size;
+int NUM_CLIENTES;
 
 #define SIZE_HASH 2000
 #define NAME_FILE "dataDogs.dat"
 #define PORT 3535                                                              
-#define BACKLOG 4 
+#define BACKLOG 32
+#define NO_ASIGNADO -2 
 //Estructuras y variables
 struct dogType{
     char nombre[32];
@@ -59,14 +62,14 @@ const int SIZE_DATA_DOG = sizeof(struct dogType);
 int seeknode(long hashnumber);
 void push(struct dogType *dog);
 
-void ingresar(void);
-void ver(int modo);
-void borrar(void);
-void buscar(void);
+void ingresar(int socket_cliente);
+void ver(int socket_cliente, int modo);
+void borrar(int socket_cliente);
+void buscar(int socket_cliente);
 
 void regresar(void (*src)(void), void (*dst)(void), char * message);
 void continuar(void (*dst)(void));
-void menu(void);
+void *menu(int *socket_cliente);
 
 //Hilos y Socket
 void enviar(int socket_cliente, void *pointer, size_t size){
@@ -82,34 +85,35 @@ void recibir(int socket_cliente, void *pointer, size_t size){
                 exit(-1);
         }}
 void crear_socket(){
-        socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server;
+    socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
 
-        if(socket_servidor == -1) {
-                perror("\n\t Error en la creación del socket...");
-                exit(-1);
-        }
-        
-        if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
-        perror("setsockopt"); 
-        exit(EXIT_FAILURE); 
-        } 
-        bzero(server.sin_zero, 8);
+    if(socket_servidor == -1) {
+            perror("\n\t Error en la creación del socket...");
+            exit(-1);
+    }
+    
+    /*if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
+    perror("setsockopt"); 
+    exit(EXIT_FAILURE); 
+    } */
+    bzero(server.sin_zero, 8);
 
-        server.sin_family = AF_INET;
-        server.sin_port = htons(PORT);
-        server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT);
+    server.sin_addr.s_addr = INADDR_ANY;
 
-        r = bind(socket_servidor, (struct sockaddr*) &server, sizeof(struct sockaddr_in));
-        if(r == -1) {
-                perror("Error al iniciar el servidor\n");
-                exit(-1);
-        }
+    r = bind(socket_servidor, (struct sockaddr*) &server, sizeof(struct sockaddr_in));
+    if(r == -1) {
+            perror("Error al iniciar el servidor\n");
+            exit(-1);
+    }
 
-        r = listen(socket_servidor, BACKLOG);
-        if(r == -1) {
-                perror("listen error");
-                exit(-1);
-        }}
+    r = listen(socket_servidor, BACKLOG);
+    if(r == -1) {
+            perror("listen error");
+            exit(-1);
+    }}
 //Funciones de inicio
 int leer(void * data, size_t size){
     if(fread(data, size, 1, fp) <= 0){
@@ -237,7 +241,7 @@ void push(struct dogType *dog){
         fseek(fp, block + SIZE_DATA_DOG, SEEK_SET);
         fwrite(&positionReg, 8, 1, fp);
     }}
-int pop(char * parameter){
+int pop(int socket_cliente, char * parameter){
     j = 0;
     long hashnumber = hash(parameter);
     block = 0;
@@ -407,7 +411,7 @@ int truncar(long n){
     free(posnext);
     return 1;}
 
-int numreg(){
+int numreg(int socket_cliente){
     fseek(fp, 0, SEEK_END);
     nregisters = (ftell(fp) - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8);
 
@@ -438,14 +442,14 @@ int numreg(){
 
 
 //Funciones de menu
-void ingresar(void){
+void ingresar(int socket_cliente){
     recibir(socket_cliente, dog, SIZE_DATA_DOG);
     push(dog);
     positionReg = ((positionReg - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
     enviar(socket_cliente, &positionReg, sizeof(positionReg));
-    menu();}
-void ver(int modo){
-    if(numreg() == 1)
+    menu(&socket_cliente);}
+void ver(int socket_cliente, int modo){
+    if(numreg(socket_cliente) == 1)
     {   
         block = (positionReg - 1) * (SIZE_DATA_DOG + 8) + (SIZE_HASH * 16);
         block = ((block - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
@@ -484,44 +488,68 @@ void ver(int modo){
     }
     if (modo == 0)
     {
-        menu();
+        menu(&socket_cliente);
     }}
-void borrar(void){
-    ver(1);
+void borrar(int socket_cliente){
+    ver(socket_cliente, 1);
     enviar(socket_cliente,&positionReg,sizeof(positionReg));
     //printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
     //scanchar(1, &opcion, "SYNsyn");
     recibir(socket_cliente,&opcion,sizeof(opcion));
     if(opcion == 'n' || opcion == 'N')
-    { menu();}
+    { menu(&socket_cliente);}
     else
     {
         r = truncar(positionReg);
         enviar(socket_cliente,&r,sizeof(r));
         //printf("\n\tRegistro borrado satisfactoriamente");
-        menu();
+        menu(&socket_cliente);
     }}
-void buscar(void){
+void buscar(int socket_cliente){
     system("clear");
     char * dogName;
     dogName = malloc(32);
     dogName[32] = '\0';
     recibir(socket_cliente, dogName,sizeof(dogName));
-    pop(dogName);
+    pop(socket_cliente,dogName);
     int busq = -1;
     enviar(socket_cliente,&busq,sizeof(busq));
     free(dogName);
-    menu();
+    menu(&socket_cliente);
     }
-void menu(){
-        recibir(socket_cliente, &opcion, sizeof(opcion));
-        system("clear");
-        switch(opcion){
-            case '1':        ingresar();	break;
-            case '2':        ver(0);		break;
-            case '3':        borrar();		break;
-            case '4':        buscar();		break;
-        }}
+void *menu(int *socket_cliente){
+    struct sockaddr_in client;
+    getpeername(*socket_cliente, (struct sockaddr *)&client, &sin_size);
+    //recibir(*socket_cliente, &opcion, sizeof(opcion));
+    system("clear");
+
+    //do {
+                recibir(*socket_cliente, &opcion, sizeof(opcion));
+                switch (opcion) {
+                case '1':
+                        ingresar(*socket_cliente);
+                        break;
+
+                case '2':
+                        ver(*socket_cliente,0);
+                        break;
+
+                case '3':
+                        borrar(*socket_cliente);
+                        break;
+
+                case '4':
+                        buscar(*socket_cliente);
+                        break;
+
+                case '5':
+                        close(*socket_cliente);
+                        *socket_cliente = NO_ASIGNADO;
+                        NUM_CLIENTES--;
+                        break;
+                }
+    //} while(opcion != 5);
+    }
 
 //Main
 void main(void){
@@ -565,15 +593,41 @@ void main(void){
     }
     //Verificacion de log
 
-    //Espera conexion 
-    //while(1){		
+    //Conexion
+    pthread_t thread[BACKLOG];
+    int clientesfd[BACKLOG];
+    for (i = 0; i < BACKLOG; i++) clientesfd[i] = NO_ASIGNADO;
+    struct sockaddr_in client;
+    do {
+        for (size_t j = 0; j < BACKLOG; j++) {
+            if (clientesfd[j] == NO_ASIGNADO) {
+                i = j;
+                break;
+            }
+        }
+            clientesfd[i] = accept(socket_servidor, (struct sockaddr *) &client, &sin_size);
+            if(clientesfd[i] == -1) {
+                    perror("\nError de conexion");
+                    exit(-1);
+            }
+            pthread_create(&thread[i], NULL,(void *)menu, (void *)&clientesfd[i]);
+            NUM_CLIENTES++;
+    } while(NUM_CLIENTES < BACKLOG);
+
+    for (i = 0; i < BACKLOG; i++) {
+        r = pthread_join(thread[i],NULL);
+        if (r != 0){
+            printf("\nError al hacer join al hilo %i\n",i );
+            exit(-1);
+        }
+    }
+    /*while(1){		
         socket_cliente = accept(socket_servidor, (struct sockaddr * )&client,&sin_size);
         if(socket_cliente == -1){
             perror("\n\t Error en recibir la conexión(accept)...");
-            exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE); 
         }
-        menu();   
-    //}
-    close(socket_cliente);
+        menu(); 
+    }*/
     close(socket_servidor);	
 }

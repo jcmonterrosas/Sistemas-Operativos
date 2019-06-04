@@ -381,13 +381,13 @@ void buscar(void){
         long int petid;
         recibir(&petid, sizeof(petid));
         resultados = resultados +1;
-        printf("\n %s%li\t%s","Numero de mascota: ",petid,dogName);
+        printf("\n\t  %s%li\t%s","Numero de mascota: ",petid,dogName);
     }
 
     if(resultados == 0){
         printf("\n\t%s%s%s\n", "No existe registro de la mascota \"", dogName, "\"...");
     }else{
-        printf("\n Numero de resultados: %i",resultados);
+        printf("\n\t  Numero de resultados: %i",resultados);
         //Muetra todas las mascotas del mismo nombre
     }
     free(dogName);
@@ -422,6 +422,7 @@ void menu(){
         "5. Salir"
     );
     scanchar(1, &opcion, "12345");
+    enviar(&opcion,sizeof(opcion));
     if(opcion == '5'){
         regresar(&menu, &salir, "¿Desea salir del programa? [S/N]:");
     }else{
@@ -429,23 +430,23 @@ void menu(){
         switch(opcion){
             case '1':
                 opcion = '1';
-                enviar(&opcion,sizeof(opcion));        
+                //enviar(&opcion,sizeof(opcion));        
                 ingresar();
                 break;
 
             case '2': 
                 opcion = '2';
-                enviar(&opcion,sizeof(opcion));
+                //enviar(&opcion,sizeof(opcion));
                 ver(0);
                 break;
             case '3':
                 opcion = '3';
-                enviar(&opcion,sizeof(opcion));
+                //enviar(&opcion,sizeof(opcion));
                 borrar();
                 break;
             case '4':        
                 opcion = '4';
-                enviar(&opcion,sizeof(opcion)); 
+                //enviar(&opcion,sizeof(opcion)); 
                 buscar();
                 break;
 
