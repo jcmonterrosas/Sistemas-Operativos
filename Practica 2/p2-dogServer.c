@@ -451,7 +451,7 @@ void ingresar(int socket_cliente){
     enviar(socket_cliente, &positionReg, sizeof(positionReg));
     char * tipo = " Insercion ";
     char otros[15];
-    sprintf(otros, "%f", positionReg);
+    sprintf(otros, "%li", positionReg);
     logreg(tipo,ip,otros);
     menu(&socket_cliente);}
 void ver(int socket_cliente, int modo){
@@ -505,18 +505,25 @@ void borrar(int socket_cliente){
     //scanchar(1, &opcion, "SYNsyn");
     recibir(socket_cliente,&opcion,sizeof(opcion));
     if(opcion == 'n' || opcion == 'N'){
-        char * tipo = " Borrado - Cancelado";
+        char * tipo = " Borrado - Cancelado ";
         char otros[15];
-        sprintf(otros, "%f", positionReg);
+        sprintf(otros, "%li", positionReg);
         logreg(tipo,ip,otros);
 
         menu(&socket_cliente);
         }
     else{
         r = truncar(positionReg);
+        
+        char num[15];
+        sprintf(num, "%li", positionReg);
+        char tonano[40]="rm ";        
+        strcat(tonano, num);
+        
+        system(tonano);
         char * tipo = " Borrado ";
         char otros[15];
-        sprintf(otros, "%f", positionReg);
+        sprintf(otros, "%li", positionReg);
         logreg(tipo,ip,otros);
         enviar(socket_cliente,&r,sizeof(r));
         //printf("\n\tRegistro borrado satisfactoriamente");
