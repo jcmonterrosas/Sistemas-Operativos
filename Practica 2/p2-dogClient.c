@@ -85,7 +85,7 @@ int main(int argc, char const *argv[]) {
     menu();
     return 0;}
 //Control ingreso de datos
-int getch(void){
+int  getch(void){
     struct termios oldattr, newattr;
     int ch;
     tcgetattr(STDIN_FILENO, &oldattr);

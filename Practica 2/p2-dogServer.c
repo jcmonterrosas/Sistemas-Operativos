@@ -57,11 +57,12 @@ char razas[][32] = {
 char genero[] = {'h', 'm', 'H', 'M'};
 struct dogType *dog;												//*dog indica una pocicion de memoria, del tipo dogType
 const int SIZE_DATA_DOG = sizeof(struct dogType);
-
+char * ip;
 //Declaracion de funciones
 int seeknode(long hashnumber);
 void push(struct dogType *dog);
 
+void logreg(char * operacion,char * ip, char * complemento);
 void ingresar(int socket_cliente);
 void ver(int socket_cliente, int modo);
 void borrar(int socket_cliente);
@@ -150,14 +151,15 @@ void logreg(char * operacion,char * ip, char * complemento){
     t=time(NULL);
     tm=localtime(&t);
     //Formato fecha y hora
-    strftime(fechayhora, 100, "%Y %m %d %T", tm);
-    printf ("Hoy es: %s", fechayhora);
+    strftime(fechayhora, 100, "%Y %m %d %T | ", tm);
+    //printf ("Hoy es: %s |", fechayhora);
 
     fputs(fechayhora,registro);
     fputs(ip,registro);
     fputs(operacion,registro);
     fputs(complemento,registro);
     fputs("\n",registro);
+    fflush(registro);
     }
 long hash(const char *str){
     long hashnumber;
@@ -447,6 +449,10 @@ void ingresar(int socket_cliente){
     push(dog);
     positionReg = ((positionReg - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
     enviar(socket_cliente, &positionReg, sizeof(positionReg));
+    char * tipo = " Insercion ";
+    char otros[15];
+    sprintf(otros, "%f", positionReg);
+    logreg(tipo,ip,otros);
     menu(&socket_cliente);}
 void ver(int socket_cliente, int modo){
     if(numreg(socket_cliente) == 1)
@@ -455,8 +461,7 @@ void ver(int socket_cliente, int modo){
         block = ((block - (SIZE_HASH * 16)) / (SIZE_DATA_DOG + 8)) + 1;
         fseek(fp, (positionReg - 1) * (SIZE_DATA_DOG + 8) + (SIZE_HASH * 16), SEEK_SET);
 
-        if(leer(dog, SIZE_DATA_DOG) == 1)
-        {
+        if(leer(dog, SIZE_DATA_DOG) == 1){
             enviar(socket_cliente,dog,SIZE_DATA_DOG);
             /*printf
             (
@@ -471,6 +476,10 @@ void ver(int socket_cliente, int modo){
                 "---------------------------------"
             );*/
         if(modo != 1){
+            char * tipo = " Lectura ";
+            char otros[15];
+            sprintf(otros, "%li", positionReg);
+            logreg(tipo,ip,otros);
             //Abrir registro de Mascota
             char result[40]; 
             sprintf(result, "%ld", block); 
@@ -486,8 +495,7 @@ void ver(int socket_cliente, int modo){
         }    
         }
     }
-    if (modo == 0)
-    {
+    if (modo == 0){
         menu(&socket_cliente);
     }}
 void borrar(int socket_cliente){
@@ -496,11 +504,20 @@ void borrar(int socket_cliente){
     //printf("\n\t%s%li%s\n\t", "¿Desea borrar el registro No. ", positionReg, "? [S/N]");
     //scanchar(1, &opcion, "SYNsyn");
     recibir(socket_cliente,&opcion,sizeof(opcion));
-    if(opcion == 'n' || opcion == 'N')
-    { menu(&socket_cliente);}
-    else
-    {
+    if(opcion == 'n' || opcion == 'N'){
+        char * tipo = " Borrado - Cancelado";
+        char otros[15];
+        sprintf(otros, "%f", positionReg);
+        logreg(tipo,ip,otros);
+
+        menu(&socket_cliente);
+        }
+    else{
         r = truncar(positionReg);
+        char * tipo = " Borrado ";
+        char otros[15];
+        sprintf(otros, "%f", positionReg);
+        logreg(tipo,ip,otros);
         enviar(socket_cliente,&r,sizeof(r));
         //printf("\n\tRegistro borrado satisfactoriamente");
         menu(&socket_cliente);
@@ -512,6 +529,11 @@ void buscar(int socket_cliente){
     dogName[32] = '\0';
     recibir(socket_cliente, dogName,sizeof(dogName));
     pop(socket_cliente,dogName);
+    
+    char * tipo = " Busqueda ";
+    char * otros = dogName;
+    logreg(tipo,ip,otros);
+    
     int busq = -1;
     enviar(socket_cliente,&busq,sizeof(busq));
     free(dogName);
@@ -553,7 +575,6 @@ void *menu(int *socket_cliente){
 
 //Main
 void main(void){
-    registro = fopen("serverDogs.log", "rb+");
     fp = fopen(NAME_FILE, "rb+");
     //Variables
     char *valor_devuelto;
@@ -592,12 +613,17 @@ void main(void){
         fclose(petNames);
     }
     //Verificacion de log
-
+    registro = fopen("serverDogs.log", "a+");
+    if(registro == NULL){
+        printf("Se creo arch LOG \n");																						
+        registro = fopen("serverDogs.log", "w+");
+    }
     //Conexion
     pthread_t thread[BACKLOG];
     int clientesfd[BACKLOG];
     for (i = 0; i < BACKLOG; i++) clientesfd[i] = NO_ASIGNADO;
     struct sockaddr_in client;
+    
     do {
         for (size_t j = 0; j < BACKLOG; j++) {
             if (clientesfd[j] == NO_ASIGNADO) {
@@ -611,8 +637,11 @@ void main(void){
                     exit(-1);
             }
             pthread_create(&thread[i], NULL,(void *)menu, (void *)&clientesfd[i]);
+            ip = inet_ntoa(client.sin_addr);
+
+            //printf("%s :IP", client.sin_addr);
             NUM_CLIENTES++;
-    } while(NUM_CLIENTES < BACKLOG);
+    }while(NUM_CLIENTES < BACKLOG);
 
     for (i = 0; i < BACKLOG; i++) {
         r = pthread_join(thread[i],NULL);
