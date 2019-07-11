@@ -58,6 +58,7 @@ char genero[] = {'h', 'm', 'H', 'M'};
 struct dogType *dog;												//*dog indica una pocicion de memoria, del tipo dogType
 const int SIZE_DATA_DOG = sizeof(struct dogType);
 char * ip;
+char* historiaC[100];
 //Declaracion de funciones
 int seeknode(long hashnumber);
 void push(struct dogType *dog);
@@ -454,6 +455,29 @@ void ingresar(int socket_cliente){
     sprintf(otros, "%li", positionReg);
     logreg(tipo,ip,otros);
     menu(&socket_cliente);}
+
+void renombrar(long actual){
+    for (long i = actual; i <= nregisters + 1; i++)
+    {
+        char ruta[32];
+        sprintf(ruta, "%li", i);
+        FILE *file = fopen(ruta, "r");
+        if(file != NULL) {
+            char result[40]; 
+            sprintf(result, "%li %li", i, i - 1);
+            char tonano[40]="mv ";
+            strcat(tonano,result);
+            printf("%s", tonano);
+            system(tonano);
+            //char * result = malloc(100);
+            //printf("%s",result);
+            fclose(file); 
+            //system(result); 
+            //free(result);         
+        }   
+    }
+}
+
 void ver(int socket_cliente, int modo){
     if(numreg(socket_cliente) == 1)
     {   
@@ -521,6 +545,7 @@ void borrar(int socket_cliente){
         strcat(tonano, num);
         
         system(tonano);
+        renombrar(positionReg);
         char * tipo = " Borrado ";
         char otros[15];
         sprintf(otros, "%li", positionReg);
